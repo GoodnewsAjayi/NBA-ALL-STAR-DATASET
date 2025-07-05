@@ -1,7 +1,15 @@
 ---NBA ALL STAR DATASET
 
-SELECT 
-    Name,
+-- Drop cleaned table if it already exists
+IF OBJECT_ID('dbo.NBA_ALL_TIME_STAR_CLEANED', 'U') IS NOT NULL
+    DROP TABLE dbo.NBA_ALL_TIME_STAR_CLEANED;
+
+-- Create cleaned and enriched version of NBA ALL TIME STAR
+SELECT
+    [Name],
+    [Nationality],
+    [Age],
+    [Seasons Played],
     [Years Active],
     TRY_CAST(LEFT([Years Active], 4) AS INT) AS Start_Year,
     TRY_CAST(
@@ -12,41 +20,53 @@ SELECT
             ELSE 
                 RIGHT([Years Active], 4)
         END AS INT
-    ) AS End_Year
-FROM [dbo].[NBA ALL TIME STAR];
+    ) AS End_Year,
+    [Average PPG],
+    [Total Points],
+    [Achievements],
+    [Fame Seasons],
+    [MVP Seasons],
+    [Clubs],
 
+    -- Binary Columns
+    CASE 
+        WHEN [MVP Seasons] IS NOT NULL AND [MVP Seasons] <> '' THEN 1 
+        ELSE 0 
+    END AS Has_MVP,
 
+    CASE 
+        WHEN [Achievements] LIKE '%NBA Champion%' THEN 1 
+        ELSE 0 
+    END AS Has_Championship,
 
+    CASE 
+        WHEN [Achievements] LIKE '%Olympic Gold%' THEN 1 
+        ELSE 0 
+    END AS Has_Olympic_Gold,
 
-SELECT 
-    a.Name,
-    a.Nationality,
-    a.Clubs,
-    a.Age,
-    a.[Total Points],
-    a.Achievements,
-    TRY_CAST(LEFT(a.[Years Active], 4) AS INT) AS Start_Year,
-    TRY_CAST(
-        CASE 
-            WHEN a.[Years Active] LIKE '%Present' THEN '2025'
-            WHEN CHARINDEX(',', a.[Years Active]) > 0 THEN 
-                RIGHT(LTRIM(RIGHT(a.[Years Active], CHARINDEX(',', REVERSE(a.[Years Active]) + ',') - 1)), 4)
-            ELSE 
-                RIGHT(a.[Years Active], 4)
-        END AS INT
-    ) AS End_Year
-FROM [dbo].[NBA ALL TIME STAR] a;
+    -- Count Columns
+    CASE 
+        WHEN [Achievements] IS NOT NULL AND [Achievements] <> '' THEN 
+            LEN([Achievements]) - LEN(REPLACE([Achievements], '×', '')) + 1
+        ELSE 0 
+    END AS Achievement_Count,
 
+    CASE 
+        WHEN [MVP Seasons] IS NOT NULL AND [MVP Seasons] <> '' THEN 
+            LEN([MVP Seasons]) - LEN(REPLACE([MVP Seasons], ',', '')) + 1
+        ELSE 0 
+    END AS MVP_Season_Count,
 
+    CASE 
+        WHEN [Fame Seasons] IS NOT NULL AND [Fame Seasons] <> '' THEN 
+            LEN([Fame Seasons]) - LEN(REPLACE([Fame Seasons], ',', '')) + 1
+        ELSE 0 
+    END AS Fame_Season_Count
 
-IF OBJECT_ID('dbo.NBA_PLAYER_MVP_YEAR', 'U') IS NOT NULL
-    DROP TABLE dbo.NBA_PLAYER_MVP_YEAR;
-
--- Use brackets to reference the table with spaces
-SELECT 
-    [Name],
-    TRY_CAST(TRIM(value) AS INT) AS MVP_Year
-INTO dbo.NBA_PLAYER_MVP_YEAR
+INTO dbo.NBA_ALL_TIME_STAR_CLEANED
 FROM [dbo].[NBA ALL TIME STAR]
-CROSS APPLY STRING_SPLIT([MVP Seasons], ',')
-WHERE [MVP toSeasons] IS NOT NULL AND [MVP Seasons] <> '';
+WHERE 
+    [Age] >= 0 
+    AND [Seasons Played] >= 0 
+    AND [Average PPG] >= 0 
+    AND [Total Points] >= 0;
